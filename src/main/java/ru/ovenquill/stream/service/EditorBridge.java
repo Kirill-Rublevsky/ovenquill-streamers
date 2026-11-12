@@ -32,7 +32,7 @@ public final class EditorBridge {
     }
 
     public void open(Player player, String type) {
-        if (!player.hasPermission("ovenquill.stream.info")) {
+        if (!canEdit(player)) {
             player.sendMessage(messages.prefixed("no-permission")); return;
         }
         player.getCurrentServer().ifPresentOrElse(connection -> {
@@ -66,7 +66,7 @@ public final class EditorBridge {
             if (!player.getUniqueId().equals(playerId) || expected == null || expected.expiresAt().isBefore(Instant.now())
                     || !expected.nonce().equals(nonce) || !expected.type().equals(type)
                     || !(type.equals("start") || type.equals("off"))
-                    || !player.hasPermission("ovenquill.stream.info")) return;
+                    || !canEdit(player)) return;
             if (template.length() > config.get().maxMessageLength()) {
                 player.sendMessage(messages.prefixed("info-too-long")); return;
             }
@@ -77,6 +77,10 @@ public final class EditorBridge {
             logger.warn("Rejected malformed editor response from {}", source.getServerInfo().getName(), exception);
             player.sendMessage(messages.prefixed("internal-error"));
         }
+    }
+
+    private boolean canEdit(Player player) {
+        return player.hasPermission("ovenquill.stream.info") || player.hasPermission(StreamService.OFFICIAL_PERMISSION);
     }
 
     private record PendingEditor(UUID nonce, String type, Instant expiresAt) { }

@@ -24,7 +24,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "0.3.0-SNAPSHOT",
+@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "0.3.1-SNAPSHOT",
         description = "Official streamer system for OVENQUILL", authors = {"OVENQUILL"})
 public final class StreamPlugin {
     private final ProxyServer proxy;
@@ -57,7 +57,7 @@ public final class StreamPlugin {
             proxy.getScheduler().buildTask(this, service::synchronizePermissions)
                     .repeat(Duration.ofSeconds(Math.max(5, config.permissionSyncSeconds()))).schedule();
             service.synchronizePermissions();
-            logger.info("OVENQUILL Stream 0.2.0-SNAPSHOT initialized from {}",
+            logger.info("OVENQUILL Stream 0.3.1-SNAPSHOT initialized from {}",
                     StreamPlugin.class.getProtectionDomain().getCodeSource().getLocation());
         } catch (Exception exception) {
             logger.error("OVENQUILL Stream failed to initialize", exception);

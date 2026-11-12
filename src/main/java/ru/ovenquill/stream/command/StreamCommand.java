@@ -66,7 +66,7 @@ public final class StreamCommand implements SimpleCommand {
     }
 
     private void info(CommandSource source, String[] args) {
-        if (!source.hasPermission(INFO)) { source.sendMessage(messages.prefixed("no-permission")); return; }
+        if (!canEditInfo(source)) { source.sendMessage(messages.prefixed("no-permission")); return; }
         if (args.length == 2 && source instanceof Player player
                 && (args[1].equalsIgnoreCase("start") || args[1].equalsIgnoreCase("off"))) {
             openEditor.accept(player, args[1].toLowerCase(Locale.ROOT));
@@ -149,11 +149,11 @@ public final class StreamCommand implements SimpleCommand {
             ArrayList<String> result = new ArrayList<>();
             result.add("help");
             if (source instanceof Player player && service.isOfficial(player)) result.addAll(List.of("link", "start", "off"));
-            if (source.hasPermission(INFO)) result.add("info");
+            if (canEditInfo(source)) result.add("info");
             if (source.hasPermission(ADMIN)) result.add("admin");
             return result;
         }
-        if (args[0].equalsIgnoreCase("info") && args.length == 2 && source.hasPermission(INFO)) return List.of("start", "off");
+        if (args[0].equalsIgnoreCase("info") && args.length == 2 && canEditInfo(source)) return List.of("start", "off");
         if (args[0].equalsIgnoreCase("admin") && args.length == 2 && source.hasPermission(ADMIN)) return List.of("list", "stop", "status", "reload");
         return List.of();
     }
@@ -165,7 +165,7 @@ public final class StreamCommand implements SimpleCommand {
             source.sendMessage(Component.text("/stream start — начать трансляцию"));
             source.sendMessage(Component.text("/stream off — завершить трансляцию"));
         }
-        if (source.hasPermission(INFO)) source.sendMessage(Component.text("/stream info <start|off> <текст> — изменить уведомление"));
+        if (canEditInfo(source)) source.sendMessage(Component.text("/stream info <start|off> — открыть редактор уведомления"));
         if (source.hasPermission(ADMIN)) source.sendMessage(Component.text("/stream admin ... — административные команды"));
         source.sendMessage(Component.text("/stream help — показать помощь"));
         source.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.DARK_GREEN));
@@ -176,5 +176,9 @@ public final class StreamCommand implements SimpleCommand {
         source.sendMessage(Component.text("/stream admin stop <player>"));
         source.sendMessage(Component.text("/stream admin status <player>"));
         source.sendMessage(Component.text("/stream admin reload"));
+    }
+
+    private boolean canEditInfo(CommandSource source) {
+        return source.hasPermission(INFO) || source instanceof Player player && service.isOfficial(player);
     }
 }

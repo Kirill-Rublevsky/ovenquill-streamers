@@ -1,5 +1,5 @@
 name: OvenquillStreamBackend
-version: 0.3.0-SNAPSHOT
+version: 0.3.1-SNAPSHOT
 main: ru.ovenquill.stream.backend.OvenquillStreamBackend
 api-version: '26.2'
 author: OVENQUILL
