@@ -1,5 +1,6 @@
 package ru.ovenquill.stream.storage;
 
+import org.sqlite.SQLiteDataSource;
 import ru.ovenquill.stream.model.StreamRecord;
 
 import java.nio.file.Path;
@@ -14,12 +15,9 @@ public final class StreamRepository implements AutoCloseable {
     private final Connection connection;
 
     public StreamRepository(Path file) throws SQLException {
-        try {
-            Class.forName("org.sqlite.JDBC");
-        } catch (ClassNotFoundException exception) {
-            throw new SQLException("SQLite JDBC driver is missing from the plugin JAR", exception);
-        }
-        this.connection = DriverManager.getConnection("jdbc:sqlite:" + file.toAbsolutePath());
+        SQLiteDataSource dataSource = new SQLiteDataSource();
+        dataSource.setUrl("jdbc:sqlite:" + file.toAbsolutePath());
+        this.connection = dataSource.getConnection();
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA journal_mode=WAL");
             statement.execute("PRAGMA foreign_keys=ON");

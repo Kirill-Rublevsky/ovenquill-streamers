@@ -25,7 +25,8 @@ public final class StreamCommand implements SimpleCommand {
         switch (args[0].toLowerCase()) {
             case "link" -> { if (args.length == 2) service.saveLink(player, args[1]); else player.sendMessage(Component.text("/stream link <ссылка>")); }
             case "start" -> service.start(player);
-            case "off" -> service.stop(player.getUniqueId(), player.getUsername(), "PLAYER_STOP", true);
+            case "off" -> service.stop(player.getUniqueId(), player.getUsername(), "PLAYER_STOP", true)
+                    .thenAccept(stopped -> { if (Boolean.FALSE.equals(stopped)) player.sendMessage(messages.prefixed("not-active")); });
             default -> help(source);
         }
     }

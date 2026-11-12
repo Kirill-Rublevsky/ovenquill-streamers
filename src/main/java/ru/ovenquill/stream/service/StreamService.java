@@ -37,6 +37,10 @@ public final class StreamService {
     public boolean isOfficial(Player player) { return player.hasPermission(OFFICIAL_PERMISSION); }
 
     public CompletableFuture<Boolean> saveLink(Player player, String raw) {
+        if (!isOfficial(player)) {
+            player.sendMessage(messages.prefixed("official-only"));
+            return CompletableFuture.completedFuture(false);
+        }
         Optional<StreamUrl> parsed = StreamUrl.parse(raw, config.maxUrlLength());
         if (parsed.isEmpty()) { player.sendMessage(messages.prefixed("invalid-link")); return CompletableFuture.completedFuture(false); }
         return CompletableFuture.supplyAsync(() -> {
@@ -46,8 +50,13 @@ public final class StreamService {
     }
 
     public CompletableFuture<Boolean> start(Player player) {
+        if (!isOfficial(player)) {
+            player.sendMessage(messages.prefixed("official-only"));
+            return CompletableFuture.completedFuture(false);
+        }
         return CompletableFuture.supplyAsync(() -> {
             try {
+                if (!isOfficial(player)) return false;
                 Optional<StreamRecord> current = repository.find(player.getUniqueId());
                 if (current.isEmpty() || current.get().url() == null) { player.sendMessage(messages.prefixed("link-required")); return false; }
                 if (current.get().active()) { player.sendMessage(messages.prefixed("already-active")); return false; }
@@ -83,6 +92,10 @@ public final class StreamService {
                         proxy.sendMessage(messages.render("off-announcement", "player", record.lastName())));
             }
             return stopped;
+        }).exceptionally(error -> {
+            logger.error("Failed to stop stream for {}", uuid, error);
+            proxy.getPlayer(uuid).ifPresent(player -> player.sendMessage(messages.prefixed("internal-error")));
+            return null;
         });
     }
 
@@ -90,9 +103,11 @@ public final class StreamService {
         CompletableFuture.supplyAsync(() -> {
             try { return repository.findActive(); } catch (SQLException exception) { throw new RuntimeException(exception); }
         }, executor).thenAccept(active -> {
+            List<StreamRecord> retained = active.stream().filter(record -> proxy.getPlayer(record.uuid())
+                    .map(this::isOfficial).orElse(true)).toList();
             for (StreamRecord record : active) proxy.getPlayer(record.uuid()).filter(player -> !isOfficial(player))
                     .ifPresent(player -> stop(record.uuid(), "permission-sync", "OFFICIAL_PERMISSION_REVOKED", true));
-            tabService.refresh(active);
+            tabService.refresh(retained);
         }).exceptionally(error -> { logger.error("Permission synchronization failed", error); return null; });
     }
 
