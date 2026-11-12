@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "ru.ovenquill"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -31,8 +31,8 @@ tasks.test {
 
 tasks.shadowJar {
     archiveClassifier.set("")
-    relocate("org.sqlite", "ru.ovenquill.stream.lib.sqlite")
     relocate("org.yaml.snakeyaml", "ru.ovenquill.stream.lib.snakeyaml")
+    mergeServiceFiles()
 }
 
 tasks.build {

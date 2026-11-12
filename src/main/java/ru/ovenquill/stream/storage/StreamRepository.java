@@ -14,6 +14,11 @@ public final class StreamRepository implements AutoCloseable {
     private final Connection connection;
 
     public StreamRepository(Path file) throws SQLException {
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException exception) {
+            throw new SQLException("SQLite JDBC driver is missing from the plugin JAR", exception);
+        }
         this.connection = DriverManager.getConnection("jdbc:sqlite:" + file.toAbsolutePath());
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA journal_mode=WAL");
