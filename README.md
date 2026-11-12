@@ -1,6 +1,6 @@
 # OVENQUILL Stream
 
-> **Статус:** ранняя тестовая сборка `0.1.2-SNAPSHOT`. Это не production-релиз полного ТЗ: ограничения §8, backend-модуль и часть административных функций ещё разрабатываются.
+> **Статус:** ранняя тестовая сборка `0.1.3-SNAPSHOT`. Это не production-релиз полного ТЗ: ограничения §8, backend-модуль и часть административных функций ещё разрабатываются.
 
 Velocity-плагин системы официальных стримеров OVENQUILL. Текущая версия — первый компилируемый вертикальный срез разработки.
 
@@ -8,12 +8,12 @@ Velocity-плагин системы официальных стримеров O
 
 1. Полностью остановите Velocity.
 2. Удалите из `velocity/plugins/` **все старые JAR OVENQUILL Stream**. Одновременно должен находиться только один JAR с plugin id `ovenquill-stream`.
-3. Поместите `ovenquill-stream-0.1.2-SNAPSHOT.jar` в `velocity/plugins/`.
-4. Запустите Velocity и проверьте строку журнала: `OVENQUILL Stream 0.1.2-SNAPSHOT initialized from ...`.
+3. Поместите `ovenquill-stream-0.1.3-SNAPSHOT.jar` в `velocity/plugins/`.
+4. Запустите Velocity и проверьте строку журнала: `OVENQUILL Stream 0.1.3-SNAPSHOT initialized from ...`.
 
 Если в стеке `StreamRepository` вызов SQLite указан на строке 17, сервер загрузил старую сборку 0.1.0, а не 0.1.2.
 
-## Реализовано в 0.1.2-SNAPSHOT
+## Реализовано в 0.1.3-SNAPSHOT
 
 - обязательная серверная проверка `ovenquill.stream.official` при каждой пользовательской команде;
 - скрытие недоступных команд из `/stream help` и автодополнения;
@@ -40,7 +40,7 @@ Velocity-плагин системы официальных стримеров O
 
 ## Сборка
 
-Требуется JDK 21. Выполните `mvn clean package` (либо `gradle clean build`). Maven создаёт итоговый JAR в `target/ovenquill-stream-0.1.2-SNAPSHOT.jar`.
+Требуется JDK 21. Выполните `mvn clean package` (либо `gradle clean build`). Maven создаёт итоговый JAR в `target/ovenquill-stream-0.1.3-SNAPSHOT.jar`.
 
 Установите JAR только на Velocity в `plugins/`, затем назначьте статус:
 

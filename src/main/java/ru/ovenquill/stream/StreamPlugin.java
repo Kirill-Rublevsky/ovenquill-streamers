@@ -22,7 +22,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "0.1.2-SNAPSHOT",
+@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "0.1.3-SNAPSHOT",
         description = "Official streamer system for OVENQUILL", authors = {"OVENQUILL"})
 public final class StreamPlugin {
     private final ProxyServer proxy;
@@ -50,15 +50,32 @@ public final class StreamPlugin {
             proxy.getScheduler().buildTask(this, service::synchronizePermissions)
                     .repeat(Duration.ofSeconds(Math.max(5, config.permissionSyncSeconds()))).schedule();
             service.synchronizePermissions();
-            logger.info("OVENQUILL Stream 0.1.2-SNAPSHOT initialized from {}",
+            logger.info("OVENQUILL Stream 0.1.3-SNAPSHOT initialized from {}",
                     StreamPlugin.class.getProtectionDomain().getCodeSource().getLocation());
         } catch (Exception exception) {
             logger.error("OVENQUILL Stream failed to initialize", exception);
         }
     }
 
-    @Subscribe public void onPostLogin(PostLoginEvent event) { if (service != null) service.synchronizePermissions(); }
-    @Subscribe public void onServerChange(ServerPostConnectEvent event) { if (service != null) service.synchronizePermissions(); }
+    @Subscribe public void onPostLogin(PostLoginEvent event) {
+        if (service != null) {
+            service.synchronizePermissions();
+            scheduleTabRecovery();
+        }
+    }
+
+    @Subscribe public void onServerChange(ServerPostConnectEvent event) {
+        if (service != null) {
+            service.synchronizePermissions();
+            scheduleTabRecovery();
+        }
+    }
+
+    private void scheduleTabRecovery() {
+        // Backend Player Info packets can arrive after ServerPostConnectEvent and overwrite our values.
+        proxy.getScheduler().buildTask(this, service::refreshTab).delay(Duration.ofMillis(500)).schedule();
+        proxy.getScheduler().buildTask(this, service::refreshTab).delay(Duration.ofSeconds(2)).schedule();
+    }
 
     @Subscribe public void onShutdown(ProxyShutdownEvent event) {
         databaseExecutor.shutdown();

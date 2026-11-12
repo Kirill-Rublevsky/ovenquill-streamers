@@ -17,7 +17,7 @@ platforms:
 
 tab:
   enabled: true
-  prefix: "● "
+  prefix: "⬤ "
   prefix-color: "#FF5555"
   name-color: "#C8A2FF"
   priority: 100

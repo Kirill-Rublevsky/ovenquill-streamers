@@ -40,7 +40,7 @@ public final class TabService {
                         visibleKeys.add(key);
                         originals.computeIfAbsent(key, ignored -> new OriginalEntry(
                                 entry.getDisplayNameComponent().orElse(null), entry.getListOrder()));
-                        entry.setDisplayName(Component.text("● ", TextColor.color(0xFF5555))
+                        entry.setDisplayName(Component.text("⬤ ", TextColor.color(0xFF5555))
                                 .append(Component.text(subject.getUsername(), TextColor.color(0xC8A2FF))));
                         entry.setListOrder(listOrder);
                     }
