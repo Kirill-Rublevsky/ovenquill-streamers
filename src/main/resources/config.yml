@@ -1,0 +1,38 @@
+plugin:
+  language: ru
+  debug: false
+
+stream:
+  require-link: true
+  cooldown-seconds: 60
+  max-url-length: 512
+  persist-active-state: true
+  announce-on-reconnect: false
+  permission-sync-seconds: 15
+
+platforms:
+  allow-other-https: true
+  allowed-schemes:
+    - https
+
+tab:
+  enabled: true
+  prefix: "● "
+  prefix-color: "#FF5555"
+  name-color: "#C8A2FF"
+  priority: 100
+  restore-original: true
+
+notifications:
+  enabled: true
+  global: true
+  clickable-link: true
+
+permissions:
+  restrict-admin-during-stream: true
+  fail-closed: true
+
+storage:
+  type: sqlite
+  file: "streams.db"
+
