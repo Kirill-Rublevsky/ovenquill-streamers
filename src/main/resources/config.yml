@@ -6,6 +6,7 @@ stream:
   require-link: true
   cooldown-seconds: 60
   max-url-length: 512
+  max-message-length: 2000
   persist-active-state: true
   announce-on-reconnect: false
   permission-sync-seconds: 15

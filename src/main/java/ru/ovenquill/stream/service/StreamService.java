@@ -22,7 +22,7 @@ public final class StreamService {
     public static final String OFFICIAL_PERMISSION = "ovenquill.stream.official";
     private final ProxyServer proxy;
     private final StreamRepository repository;
-    private final PluginConfig config;
+    private volatile PluginConfig config;
     private final Messages messages;
     private final TabService tabService;
     private final Executor executor;
@@ -35,6 +35,8 @@ public final class StreamService {
     }
 
     public boolean isOfficial(Player player) { return player.hasPermission(OFFICIAL_PERMISSION); }
+
+    public void updateConfig(PluginConfig config) { this.config = config; }
 
     public CompletableFuture<Boolean> saveLink(Player player, String raw) {
         if (!isOfficial(player)) {
@@ -123,6 +125,19 @@ public final class StreamService {
 
     public List<StreamRecord> active() {
         try { return repository.findActive(); } catch (SQLException exception) { throw new RuntimeException(exception); }
+    }
+
+    public Optional<StreamRecord> findByName(String name) {
+        try { return repository.findByName(name); }
+        catch (SQLException exception) { throw new RuntimeException(exception); }
+    }
+
+    public CompletableFuture<List<StreamRecord>> activeAsync() {
+        return CompletableFuture.supplyAsync(this::active, executor);
+    }
+
+    public CompletableFuture<Optional<StreamRecord>> findByNameAsync(String name) {
+        return CompletableFuture.supplyAsync(() -> findByName(name), executor);
     }
 
     private void complete(Player player, Boolean success, Throwable error, String successMessage) {

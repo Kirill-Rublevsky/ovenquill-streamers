@@ -8,14 +8,39 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class Messages {
-    private final Map<String, String> values;
+    private final Path file;
+    private final Map<String, String> defaults;
+    private volatile Map<String, String> values;
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
 
     public Messages(Path file) throws IOException {
-        try (InputStream input = Files.newInputStream(file)) { this.values = new Yaml().load(input); }
+        this.file = file;
+        try (InputStream input = Messages.class.getClassLoader().getResourceAsStream("messages.yml")) {
+            if (input == null) throw new IOException("Missing bundled messages.yml");
+            Map<String, String> loadedDefaults = new Yaml().load(input);
+            this.defaults = Map.copyOf(loadedDefaults == null ? Map.of() : loadedDefaults);
+        }
+        reload();
+    }
+
+    public synchronized void reload() throws IOException {
+        try (InputStream input = Files.newInputStream(file)) {
+            Map<String, String> loaded = new Yaml().load(input);
+            Map<String, String> merged = new LinkedHashMap<>(defaults);
+            if (loaded != null) merged.putAll(loaded);
+            this.values = Map.copyOf(merged);
+        }
+    }
+
+    public synchronized void update(String key, String value) throws IOException {
+        Map<String, String> updated = new LinkedHashMap<>(values);
+        updated.put(key, value);
+        Files.writeString(file, new Yaml().dump(updated));
+        values = Map.copyOf(updated);
     }
 
     public Component prefixed(String key) { return render("prefix").append(render(key)); }

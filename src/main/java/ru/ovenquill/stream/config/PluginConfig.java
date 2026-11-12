@@ -8,8 +8,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-public record PluginConfig(int cooldownSeconds, int maxUrlLength, int permissionSyncSeconds, boolean tabEnabled,
-                           int tabPriority, boolean notificationsEnabled) {
+public record PluginConfig(int cooldownSeconds, int maxUrlLength, int maxMessageLength,
+                           int permissionSyncSeconds, boolean tabEnabled, int tabPriority,
+                           boolean notificationsEnabled) {
     public static PluginConfig load(Path dataDirectory) throws IOException {
         Files.createDirectories(dataDirectory);
         copyDefault(dataDirectory, "config.yml");
@@ -20,6 +21,7 @@ public record PluginConfig(int cooldownSeconds, int maxUrlLength, int permission
             Map<String, Object> tab = section(root, "tab");
             Map<String, Object> notifications = section(root, "notifications");
             return new PluginConfig(integer(stream, "cooldown-seconds", 60), integer(stream, "max-url-length", 512),
+                    integer(stream, "max-message-length", 2000),
                     integer(stream, "permission-sync-seconds", 15), bool(tab, "enabled", true),
                     integer(tab, "priority", 100), bool(notifications, "enabled", true));
         }

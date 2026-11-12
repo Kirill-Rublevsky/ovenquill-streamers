@@ -66,6 +66,16 @@ public final class StreamRepository implements AutoCloseable {
         return records;
     }
 
+    public synchronized Optional<StreamRecord> findByName(String name) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT * FROM streamers WHERE last_name = ? COLLATE NOCASE ORDER BY updated_at DESC LIMIT 1")) {
+            statement.setString(1, name);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
+            }
+        }
+    }
+
     public synchronized void saveLink(UUID uuid, String name, String url, String platform) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 INSERT INTO streamers(uuid,last_name,url,platform,active,updated_at) VALUES(?,?,?,?,0,?)
