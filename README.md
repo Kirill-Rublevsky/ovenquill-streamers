@@ -9,6 +9,12 @@
 
 Остановите всю сеть, удалите старые JAR OVENQUILL Stream, установите оба файла в указанные каталоги и запустите сначала Purpur-серверы, затем Velocity. Требуется Java 21 или новее. SQLite JDBC уже включён в основной JAR.
 
+Чтобы исключить путаницу, используйте явно названные файлы из `release/`: `OVENQUILL-STREAM-VELOCITY-0.3.1.jar` для Velocity и `OVENQUILL-STREAM-PURPUR-0.3.1.jar` для Purpur. Архив `OVENQUILL-STREAM-0.3.1-INSTALL.zip` уже содержит правильную структуру каталогов.
+
+### Ошибка `ClassNotFoundException: ru.ovenquill.stream.StreamPlugin`
+
+В `velocity/plugins/` загружен неверный, неполный либо дублирующий JAR. Полностью остановите прокси, удалите **все** файлы OVENQUILL Stream из этого каталога и загрузите туда только `OVENQUILL-STREAM-VELOCITY-0.3.1.jar`. Purpur-файл нельзя помещать на Velocity. Затем проверьте SHA-256 Velocity JAR: `53348600B3B3B17A243105EAC027AEE51937ACE176DFC2A302C5AEEEEC73D6ED`.
+
 ## Команды игроков
 
 | Команда | Назначение | Право |
