@@ -10,7 +10,6 @@ import ru.ovenquill.stream.config.PluginConfig;
 import ru.ovenquill.stream.model.StreamRecord;
 import ru.ovenquill.stream.service.StreamService;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -84,7 +83,7 @@ public final class StreamCommand implements SimpleCommand {
         try {
             messages.update(args[1].equalsIgnoreCase("start") ? "start-announcement" : "off-announcement", template);
             source.sendMessage(messages.prefixed("info-saved"));
-        } catch (IOException exception) {
+        } catch (Exception exception) {
             source.sendMessage(messages.prefixed("internal-error"));
         }
     }

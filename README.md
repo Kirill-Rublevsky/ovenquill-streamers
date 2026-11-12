@@ -4,16 +4,16 @@
 
 ## Состав и установка
 
-- `ovenquill-stream-0.3.1-SNAPSHOT.jar` — основной плагин для `velocity/plugins/`: команды, SQLite, уведомления, permissions и TAB.
-- `ovenquill-stream-backend-0.3.1-SNAPSHOT.jar` — модуль для `plugins/` **каждого** Purpur-сервера: Minecraft GUI и защищённая связь с Velocity.
+- `OVENQUILL-STREAM-VELOCITY-1.0.0-RC1.jar` — основной плагин для `velocity/plugins/`: команды, SQLite, уведомления, permissions и TAB.
+- `OVENQUILL-STREAM-PURPUR-1.0.0-RC1.jar` — модуль для `plugins/` **каждого** Purpur-сервера: Minecraft GUI, ограничение backend-прав и защищённая связь с Velocity.
 
-Остановите всю сеть, удалите старые JAR OVENQUILL Stream, установите оба файла в указанные каталоги и запустите сначала Purpur-серверы, затем Velocity. Требуется Java 21 или новее. SQLite JDBC уже включён в основной JAR.
+Остановите всю сеть, удалите старые JAR OVENQUILL Stream, установите оба файла в указанные каталоги и запустите сначала Purpur-серверы, затем Velocity. Требуются Java 21+ и LuckPerms 5.5 на Velocity и на каждом Purpur. SQLite JDBC уже включён в основной JAR.
 
-Чтобы исключить путаницу, используйте явно названные файлы из `release/`: `OVENQUILL-STREAM-VELOCITY-0.3.1.jar` для Velocity и `OVENQUILL-STREAM-PURPUR-0.3.1.jar` для Purpur. Архив `OVENQUILL-STREAM-0.3.1-INSTALL.zip` уже содержит правильную структуру каталогов.
+Архив `OVENQUILL-STREAM-1.0.0-RC1-INSTALL.zip` содержит правильную структуру каталогов.
 
 ### Ошибка `ClassNotFoundException: ru.ovenquill.stream.StreamPlugin`
 
-В `velocity/plugins/` загружен неверный, неполный либо дублирующий JAR. Полностью остановите прокси, удалите **все** файлы OVENQUILL Stream из этого каталога и загрузите туда только `OVENQUILL-STREAM-VELOCITY-0.3.1.jar`. Purpur-файл нельзя помещать на Velocity. Затем проверьте SHA-256 Velocity JAR: `53348600B3B3B17A243105EAC027AEE51937ACE176DFC2A302C5AEEEEC73D6ED`.
+В `velocity/plugins/` загружен неверный, неполный либо дублирующий JAR. Полностью остановите прокси, удалите **все** файлы OVENQUILL Stream из этого каталога и загрузите туда только файл с `VELOCITY` в имени. Purpur-файл нельзя помещать на Velocity.
 
 ## Команды игроков
 
@@ -67,6 +67,14 @@ GUI предоставляет палитру, жирный визуальный
 
 Редактор защищён одноразовым UUID-токеном на пять минут. Velocity принимает сохранение только от текущего backend-сервера игрока и повторно проверяет permission.
 
+## Ограничение административных прав
+
+При `/stream start` Velocity и текущий Purpur получают временные отрицательные LuckPerms nodes для всех выданных прав, совпадающих с `permissions.admin-prefixes`. Purpur дополнительно снимает OP, предварительно сохраняя исходное значение на диске. Запуск LIVE подтверждается только после ответа backend; при `fail-closed: true` ошибка или отсутствие backend/LuckPerms отменяет запуск.
+
+Постоянные группы и permissions не изменяются. При `/stream off` временные nodes снимаются, OP восстанавливается, и только после подтверждения выполняется завершение. При переходе между серверами ограничения применяются повторно. После аварии исходный OP хранится в `plugins/OvenquillStreamBackend/config.yml` и восстанавливается после подтверждённого завершения.
+
+Обязательно дополните `permissions.admin-prefixes` префиксами **всех** административных плагинов вашей сети. Плагин не может семантически определить неизвестный permission стороннего плагина. `ovenquill.stream.official` и возможность `/stream off` сохраняются даже при широком префиксе `ovenquill.`.
+
 ## Конфигурация
 
 Настройки создаются в `velocity/plugins/ovenquill-stream/`:
@@ -78,6 +86,8 @@ GUI предоставляет палитру, жирный визуальный
 - `tab.*` — круг, цвета, приоритет и восстановление TAB;
 - `notifications.enabled` — глобальные оповещения;
 - `storage.file` — SQLite-файл;
+- `permissions.restrict-admin-during-stream` и `permissions.fail-closed` — режим ограничения;
+- `permissions.admin-prefixes` — область контролируемых административных прав;
 - `messages.yml` — все тексты и шаблоны MiniMessage.
 
 ## Безопасность и хранение
@@ -101,6 +111,8 @@ mvn -f backend/pom.xml clean package
 
 Результаты находятся в `target/` и `backend/target/`.
 
-## Известное ограничение
+## Проверка и границы подтверждения
 
-Автоматическое временное снятие всех административных прав во время LIVE пока не включено. Для безопасной реализации требуется подтверждённая интеграция с конфигурацией LuckPerms конкретной сети; постоянные права и OP плагин вслепую не изменяет.
+Автоматические тесты проверяют URL, SQLite, сообщения и production-конфигурацию. Отдельный smoke-тест запускает SQLite непосредственно из итогового shaded JAR. Оба модуля компилируются против Velocity 4.3.0, Purpur 26.2 и LuckPerms API 5.5.
+
+Интеграционные сценарии с реальной сетью (конфликт стороннего TAB, конкретные административные плагины, аварийное отключение процесса) должны быть подтверждены на staging-копии вашей сети перед заменой RC1 на стабильный `1.0.0`; они не выдаются за автоматически пройденные.

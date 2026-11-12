@@ -25,18 +25,22 @@ public final class StreamService {
     private volatile PluginConfig config;
     private final Messages messages;
     private final TabService tabService;
+    private final PermissionService permissionService;
     private final Executor executor;
     private final Logger logger;
 
     public StreamService(ProxyServer proxy, StreamRepository repository, PluginConfig config, Messages messages,
-                         TabService tabService, Executor executor, Logger logger) {
+                         TabService tabService, PermissionService permissionService, Executor executor, Logger logger) {
         this.proxy = proxy; this.repository = repository; this.config = config; this.messages = messages;
-        this.tabService = tabService; this.executor = executor; this.logger = logger;
+        this.tabService = tabService; this.permissionService = permissionService; this.executor = executor; this.logger = logger;
     }
 
     public boolean isOfficial(Player player) { return player.hasPermission(OFFICIAL_PERMISSION); }
 
-    public void updateConfig(PluginConfig config) { this.config = config; }
+    public void updateConfig(PluginConfig config) {
+        this.config = config;
+        tabService.update(config.tabEnabled(), config.tabPriority(), config.tabPrefix(), config.tabPrefixColor(), config.tabNameColor());
+    }
 
     public CompletableFuture<Boolean> saveLink(Player player, String raw) {
         if (!isOfficial(player)) {
@@ -44,9 +48,11 @@ public final class StreamService {
             return CompletableFuture.completedFuture(false);
         }
         Optional<StreamUrl> parsed = StreamUrl.parse(raw, config.maxUrlLength());
+        if (parsed.isPresent() && !config.allowOtherHttps() && parsed.get().platform().equals("Другая")) parsed = Optional.empty();
         if (parsed.isEmpty()) { player.sendMessage(messages.prefixed("invalid-link")); return CompletableFuture.completedFuture(false); }
+        StreamUrl validated = parsed.get();
         return CompletableFuture.supplyAsync(() -> {
-            try { repository.saveLink(player.getUniqueId(), player.getUsername(), parsed.get().value(), parsed.get().platform()); return true; }
+            try { repository.saveLink(player.getUniqueId(), player.getUsername(), validated.value(), validated.platform()); return true; }
             catch (SQLException exception) { throw new RuntimeException(exception); }
         }, executor).whenComplete((saved, error) -> complete(player, saved, error, "link-saved"));
     }
@@ -69,7 +75,11 @@ public final class StreamService {
                         return false;
                     }
                 }
-                return repository.activate(player.getUniqueId(), player.getUsername(), Instant.now());
+                boolean restricted = permissionService.restrict(player).join();
+                if (!restricted) { player.sendMessage(messages.prefixed("restriction-failed")); return false; }
+                boolean activated = repository.activate(player.getUniqueId(), player.getUsername(), Instant.now());
+                if (!activated) permissionService.restore(player);
+                return activated;
             } catch (SQLException exception) { throw new RuntimeException(exception); }
         }, executor).thenApply(started -> {
             if (started) {
@@ -84,10 +94,21 @@ public final class StreamService {
     }
 
     public CompletableFuture<Boolean> stop(UUID uuid, String actor, String action, boolean announce) {
-        return CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Boolean> restored = proxy.getPlayer(uuid).map(permissionService::restore)
+                .orElseGet(() -> CompletableFuture.completedFuture(true));
+        return restored.thenCompose(ok -> {
+            if (!ok) {
+                proxy.getPlayer(uuid).ifPresent(player -> player.sendMessage(messages.prefixed("restoration-failed")));
+                return CompletableFuture.completedFuture(false);
+            }
+            return CompletableFuture.supplyAsync(() -> {
             try { return repository.deactivate(uuid, Instant.now(), action, actor); }
-            catch (SQLException exception) { throw new RuntimeException(exception); }
-        }, executor).thenApply(stopped -> {
+            catch (SQLException exception) {
+                proxy.getPlayer(uuid).ifPresent(permissionService::restrict);
+                throw new RuntimeException(exception);
+            }
+            }, executor);
+        }).thenApply(stopped -> {
             if (stopped) {
                 refreshTab();
                 proxy.getPlayer(uuid).ifPresent(player -> player.sendMessage(messages.prefixed("stopped")));
@@ -141,6 +162,11 @@ public final class StreamService {
 
     public CompletableFuture<Optional<StreamRecord>> findByNameAsync(String name) {
         return CompletableFuture.supplyAsync(() -> findByName(name), executor);
+    }
+
+    public void synchronizePlayerRestrictions(Player player) {
+        CompletableFuture.supplyAsync(() -> find(player.getUniqueId()).map(StreamRecord::active).orElse(false), executor)
+                .thenAccept(active -> permissionService.ensure(player, active));
     }
 
     private void complete(Player player, Boolean success, Throwable error, String successMessage) {

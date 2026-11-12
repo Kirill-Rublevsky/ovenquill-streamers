@@ -8,6 +8,7 @@ import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import org.slf4j.Logger;
@@ -17,6 +18,7 @@ import ru.ovenquill.stream.config.PluginConfig;
 import ru.ovenquill.stream.service.StreamService;
 import ru.ovenquill.stream.service.EditorBridge;
 import ru.ovenquill.stream.service.TabService;
+import ru.ovenquill.stream.service.PermissionService;
 import ru.ovenquill.stream.storage.StreamRepository;
 
 import java.nio.file.Path;
@@ -24,8 +26,9 @@ import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "0.3.1-SNAPSHOT",
-        description = "Official streamer system for OVENQUILL", authors = {"OVENQUILL"})
+@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "1.0.0-RC1",
+        description = "Official streamer system for OVENQUILL", authors = {"OVENQUILL"},
+        dependencies = {@Dependency(id = "luckperms")})
 public final class StreamPlugin {
     private final ProxyServer proxy;
     private final Logger logger;
@@ -38,6 +41,7 @@ public final class StreamPlugin {
     private volatile PluginConfig config;
     private Messages messages;
     private EditorBridge editorBridge;
+    private PermissionService permissionService;
 
     @Inject public StreamPlugin(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
         this.proxy = proxy; this.logger = logger; this.dataDirectory = dataDirectory;
@@ -47,9 +51,13 @@ public final class StreamPlugin {
         try {
             config = PluginConfig.load(dataDirectory);
             messages = new Messages(dataDirectory.resolve("messages.yml"));
-            repository = new StreamRepository(dataDirectory.resolve("streams.db"));
-            TabService tabService = new TabService(proxy, config.tabPriority());
-            service = new StreamService(proxy, repository, config, messages, tabService, databaseExecutor, logger);
+            Path storagePath = dataDirectory.resolve(config.storageFile()).normalize();
+            if (!storagePath.startsWith(dataDirectory.normalize())) throw new IllegalArgumentException("storage.file escapes plugin directory");
+            repository = new StreamRepository(storagePath);
+            TabService tabService = new TabService(proxy, config.tabEnabled(), config.tabPriority(), config.tabPrefix(),
+                    config.tabPrefixColor(), config.tabNameColor());
+            permissionService = new PermissionService(() -> config, logger);
+            service = new StreamService(proxy, repository, config, messages, tabService, permissionService, databaseExecutor, logger);
             editorBridge = new EditorBridge(messages, () -> config, logger);
             proxy.getChannelRegistrar().register(EditorBridge.CHANNEL);
             proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("stream").plugin(this).build(),
@@ -57,7 +65,7 @@ public final class StreamPlugin {
             proxy.getScheduler().buildTask(this, service::synchronizePermissions)
                     .repeat(Duration.ofSeconds(Math.max(5, config.permissionSyncSeconds()))).schedule();
             service.synchronizePermissions();
-            logger.info("OVENQUILL Stream 0.3.1-SNAPSHOT initialized from {}",
+            logger.info("OVENQUILL Stream 1.0.0-RC1 initialized from {}",
                     StreamPlugin.class.getProtectionDomain().getCodeSource().getLocation());
         } catch (Exception exception) {
             logger.error("OVENQUILL Stream failed to initialize", exception);
@@ -67,6 +75,7 @@ public final class StreamPlugin {
     @Subscribe public void onPostLogin(PostLoginEvent event) {
         if (service != null) {
             service.synchronizePermissions();
+            service.synchronizePlayerRestrictions(event.getPlayer());
             scheduleTabRecovery();
         }
     }
@@ -74,12 +83,14 @@ public final class StreamPlugin {
     @Subscribe public void onServerChange(ServerPostConnectEvent event) {
         if (service != null) {
             service.synchronizePermissions();
+            service.synchronizePlayerRestrictions(event.getPlayer());
             scheduleTabRecovery();
         }
     }
 
     @Subscribe public void onPluginMessage(PluginMessageEvent event) {
         if (editorBridge != null) editorBridge.handle(event);
+        if (permissionService != null) permissionService.handle(event);
     }
 
     private void scheduleTabRecovery() {

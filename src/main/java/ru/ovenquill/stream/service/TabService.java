@@ -17,13 +17,25 @@ import java.util.UUID;
 
 public final class TabService {
     private final ProxyServer proxy;
-    private final int priority;
+    private volatile boolean enabled;
+    private volatile int priority;
+    private volatile String prefix;
+    private volatile TextColor prefixColor;
+    private volatile TextColor nameColor;
     private final Map<EntryKey, OriginalEntry> originals = new HashMap<>();
 
-    public TabService(ProxyServer proxy, int priority) { this.proxy = proxy; this.priority = priority; }
+    public TabService(ProxyServer proxy, boolean enabled, int priority, String prefix, String prefixColor, String nameColor) {
+        this.proxy = proxy; update(enabled, priority, prefix, prefixColor, nameColor);
+    }
+
+    public void update(boolean enabled, int priority, String prefix, String prefixColor, String nameColor) {
+        this.enabled = enabled; this.priority = priority; this.prefix = prefix;
+        this.prefixColor = color(prefixColor, 0xFF5555); this.nameColor = color(nameColor, 0xC8A2FF);
+    }
 
     public synchronized void refresh(Collection<StreamRecord> active) {
-        List<StreamRecord> ordered = active.stream().sorted(Comparator
+        Collection<StreamRecord> effective = enabled ? active : List.of();
+        List<StreamRecord> ordered = effective.stream().sorted(Comparator
                 .comparing(StreamRecord::startedAt, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(StreamRecord::uuid)).toList();
         Map<UUID, Integer> orderById = new HashMap<>();
@@ -40,8 +52,8 @@ public final class TabService {
                         visibleKeys.add(key);
                         originals.computeIfAbsent(key, ignored -> new OriginalEntry(
                                 entry.getDisplayNameComponent().orElse(null), entry.getListOrder()));
-                        entry.setDisplayName(Component.text("⬤ ", TextColor.color(0xFF5555))
-                                .append(Component.text(subject.getUsername(), TextColor.color(0xC8A2FF))));
+                        entry.setDisplayName(Component.text(prefix, prefixColor)
+                                .append(Component.text(subject.getUsername(), nameColor)));
                         entry.setListOrder(listOrder);
                     }
                 });
@@ -60,5 +72,8 @@ public final class TabService {
 
     private record EntryKey(UUID viewer, UUID subject) { }
     private record OriginalEntry(Component displayName, int listOrder) { }
+    private static TextColor color(String input, int fallback) {
+        TextColor parsed = TextColor.fromHexString(input); return parsed == null ? TextColor.color(fallback) : parsed;
+    }
 }
 

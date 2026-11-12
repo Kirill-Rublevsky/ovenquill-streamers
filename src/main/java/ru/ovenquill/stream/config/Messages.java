@@ -16,6 +16,7 @@ public final class Messages {
     private final Map<String, String> defaults;
     private volatile Map<String, String> values;
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
+    private final MiniMessage strictMiniMessage = MiniMessage.builder().strict(true).build();
 
     public Messages(Path file) throws IOException {
         this.file = file;
@@ -37,6 +38,7 @@ public final class Messages {
     }
 
     public synchronized void update(String key, String value) throws IOException {
+        strictMiniMessage.deserialize(value);
         Map<String, String> updated = new LinkedHashMap<>(values);
         updated.put(key, value);
         Files.writeString(file, new Yaml().dump(updated));

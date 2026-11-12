@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "ru.ovenquill"
-version = "0.3.1-SNAPSHOT"
+version = "1.0.0-RC1"
 
 repositories {
     mavenCentral()

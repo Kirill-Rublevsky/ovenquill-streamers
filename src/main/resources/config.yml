@@ -1,20 +1,11 @@
-plugin:
-  language: ru
-  debug: false
-
 stream:
-  require-link: true
   cooldown-seconds: 60
   max-url-length: 512
   max-message-length: 2000
-  persist-active-state: true
-  announce-on-reconnect: false
   permission-sync-seconds: 15
 
 platforms:
   allow-other-https: true
-  allowed-schemes:
-    - https
 
 tab:
   enabled: true
@@ -22,18 +13,28 @@ tab:
   prefix-color: "#FF5555"
   name-color: "#C8A2FF"
   priority: 100
-  restore-original: true
 
 notifications:
   enabled: true
-  global: true
-  clickable-link: true
 
 permissions:
   restrict-admin-during-stream: true
   fail-closed: true
+  # Every granted node beginning with one of these prefixes is temporarily negated during LIVE.
+  # Add prefixes used by every administrative plugin installed on your network.
+  admin-prefixes:
+    - "luckperms."
+    - "velocity.command."
+    - "minecraft.command."
+    - "bukkit.command."
+    - "essentials."
+    - "worldedit."
+    - "worldguard."
+    - "coreprotect."
+    - "litebans."
+    - "advancedban."
+    - "vanish."
 
 storage:
-  type: sqlite
   file: "streams.db"
 

@@ -5,6 +5,12 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.luckperms.api.LuckPerms;
+import net.luckperms.api.LuckPermsProvider;
+import net.luckperms.api.model.user.User;
+import net.luckperms.api.node.Node;
+import net.luckperms.api.node.NodeType;
+import net.luckperms.api.node.types.PermissionNode;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -28,14 +34,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.ArrayList;
 
 public final class OvenquillStreamBackend extends JavaPlugin implements PluginMessageListener, Listener {
     private static final String CHANNEL = "ovenquill:stream";
     private static final Component TITLE = Component.text("OVENQUILL • Редактор", NamedTextColor.DARK_PURPLE);
     private static final MiniMessage MINI = MiniMessage.miniMessage();
     private final Map<UUID, EditorSession> sessions = new HashMap<>();
+    private final Map<UUID, List<Node>> restrictionNodes = new HashMap<>();
+    private LuckPerms luckPerms;
 
     @Override public void onEnable() {
+        luckPerms = LuckPermsProvider.get();
         getServer().getMessenger().registerIncomingPluginChannel(this, CHANNEL, this);
         getServer().getMessenger().registerOutgoingPluginChannel(this, CHANNEL);
         getServer().getPluginManager().registerEvents(this, this);
@@ -47,7 +57,17 @@ public final class OvenquillStreamBackend extends JavaPlugin implements PluginMe
     @Override public void onPluginMessageReceived(String channel, Player player, byte[] data) {
         if (!CHANNEL.equals(channel) || data.length > 4096) return;
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(data))) {
-            if (!"OPEN_EDITOR".equals(in.readUTF())) return;
+            String action = in.readUTF();
+            if (action.equals("RESTRICT") || action.equals("RESTORE")) {
+                UUID playerId = UUID.fromString(in.readUTF()); UUID nonce = UUID.fromString(in.readUTF());
+                int count = in.readInt(); if (count < 0 || count > 100) return;
+                List<String> prefixes = new ArrayList<>(); for (int i = 0; i < count; i++) prefixes.add(in.readUTF().toLowerCase());
+                if (!player.getUniqueId().equals(playerId)) return;
+                Bukkit.getScheduler().runTask(this, () -> acknowledge(player, nonce, action,
+                        action.equals("RESTRICT") ? restrict(player, prefixes) : restore(player)));
+                return;
+            }
+            if (!"OPEN_EDITOR".equals(action)) return;
             UUID playerId = UUID.fromString(in.readUTF());
             UUID nonce = UUID.fromString(in.readUTF());
             String type = in.readUTF();
@@ -60,6 +80,52 @@ public final class OvenquillStreamBackend extends JavaPlugin implements PluginMe
         } catch (Exception ex) {
             getLogger().warning("Отклонено некорректное сообщение редактора: " + ex.getMessage());
         }
+    }
+
+    private boolean restrict(Player player, List<String> prefixes) {
+        try {
+            User user = luckPerms.getUserManager().getUser(player.getUniqueId()); if (user == null) return false;
+            removeTransient(user, player.getUniqueId());
+            List<Node> added = new ArrayList<>();
+            for (PermissionNode node : user.resolveInheritedNodes(NodeType.PERMISSION, user.getQueryOptions())) {
+                String permission = node.getPermission().toLowerCase();
+                boolean preserved = permission.equals("ovenquill.stream.official") || permission.equals("ovenquill.stream.off");
+                boolean admin = !preserved && (permission.equals("ovenquill.stream.admin")
+                        || permission.equals("ovenquill.stream.info")
+                        || prefixes.stream().anyMatch(permission::startsWith));
+                if (!node.getValue() || !admin) continue;
+                Node negative = PermissionNode.builder(permission).value(false).build();
+                user.transientData().add(negative); added.add(negative);
+            }
+            restrictionNodes.put(player.getUniqueId(), added);
+            String path = "restrictions." + player.getUniqueId() + ".was-op";
+            if (!getConfig().contains(path)) { getConfig().set(path, player.isOp()); saveConfig(); }
+            if (player.isOp()) player.setOp(false);
+            return !player.isOp();
+        } catch (Exception exception) { getLogger().severe("Не удалось ограничить права " + player.getUniqueId() + ": " + exception); return false; }
+    }
+
+    private boolean restore(Player player) {
+        try {
+            User user = luckPerms.getUserManager().getUser(player.getUniqueId());
+            if (user != null) removeTransient(user, player.getUniqueId());
+            String root = "restrictions." + player.getUniqueId();
+            if (getConfig().contains(root + ".was-op")) player.setOp(getConfig().getBoolean(root + ".was-op"));
+            getConfig().set(root, null); saveConfig();
+            return true;
+        } catch (Exception exception) { getLogger().severe("Не удалось восстановить права " + player.getUniqueId() + ": " + exception); return false; }
+    }
+
+    private void removeTransient(User user, UUID uuid) {
+        List<Node> previous = restrictionNodes.remove(uuid);
+        if (previous != null) previous.forEach(user.transientData()::remove);
+    }
+
+    private void acknowledge(Player player, UUID nonce, String action, boolean success) {
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream(); DataOutputStream out = new DataOutputStream(bytes)) {
+            out.writeUTF("PERMISSION_ACK"); out.writeUTF(player.getUniqueId().toString()); out.writeUTF(nonce.toString());
+            out.writeUTF(action); out.writeBoolean(success); player.sendPluginMessage(this, CHANNEL, bytes.toByteArray());
+        } catch (Exception exception) { getLogger().warning("Не удалось подтвердить изменение прав: " + exception.getMessage()); }
     }
 
     private void openMenu(Player player, EditorSession session) {
