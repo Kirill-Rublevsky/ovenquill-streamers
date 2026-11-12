@@ -1,0 +1,6 @@
+name: OvenquillStreamBackend
+version: 0.3.0-SNAPSHOT
+main: ru.ovenquill.stream.backend.OvenquillStreamBackend
+api-version: '26.2'
+author: OVENQUILL
+description: Secure Purpur GUI bridge for OVENQUILL Stream

@@ -44,6 +44,7 @@ public final class Messages {
     }
 
     public Component prefixed(String key) { return render("prefix").append(render(key)); }
+    public String raw(String key) { return values.getOrDefault(key, defaults.getOrDefault(key, "")); }
     public Component render(String key, String... replacements) {
         String value = values.getOrDefault(key, "<red>Missing message: " + key + "</red>");
         for (int i = 0; i + 1 < replacements.length; i += 2) {

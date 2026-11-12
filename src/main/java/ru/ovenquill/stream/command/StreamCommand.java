@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.function.BiConsumer;
 
 public final class StreamCommand implements SimpleCommand {
     private static final String ADMIN = "ovenquill.stream.admin";
@@ -30,12 +31,15 @@ public final class StreamCommand implements SimpleCommand {
     private final Messages messages;
     private final Supplier<PluginConfig> config;
     private final Runnable reload;
+    private final BiConsumer<Player, String> openEditor;
 
-    public StreamCommand(StreamService service, Messages messages, Supplier<PluginConfig> config, Runnable reload) {
+    public StreamCommand(StreamService service, Messages messages, Supplier<PluginConfig> config, Runnable reload,
+                         BiConsumer<Player, String> openEditor) {
         this.service = service;
         this.messages = messages;
         this.config = config;
         this.reload = reload;
+        this.openEditor = openEditor;
     }
 
     @Override public void execute(Invocation invocation) {
@@ -63,6 +67,11 @@ public final class StreamCommand implements SimpleCommand {
 
     private void info(CommandSource source, String[] args) {
         if (!source.hasPermission(INFO)) { source.sendMessage(messages.prefixed("no-permission")); return; }
+        if (args.length == 2 && source instanceof Player player
+                && (args[1].equalsIgnoreCase("start") || args[1].equalsIgnoreCase("off"))) {
+            openEditor.accept(player, args[1].toLowerCase(Locale.ROOT));
+            return;
+        }
         if (args.length < 3 || !(args[1].equalsIgnoreCase("start") || args[1].equalsIgnoreCase("off"))) {
             source.sendMessage(Component.text("/stream info <start|off> <текст>"));
             return;

@@ -76,7 +76,8 @@ public final class StreamService {
                 player.sendMessage(messages.prefixed("started"));
                 refreshTab();
                 if (config.notificationsEnabled()) find(player.getUniqueId()).ifPresent(record ->
-                        proxy.sendMessage(messages.render("start-announcement", "player", player.getUsername(), "link", record.url())));
+                        proxy.sendMessage(messages.render("start-announcement", "player", player.getUsername(),
+                                "link", safe(record.url()), "server", serverName(player), "platform", safe(record.platform()))));
             }
             return started;
         }).exceptionally(error -> { fail(player, error); return false; });
@@ -91,7 +92,9 @@ public final class StreamService {
                 refreshTab();
                 proxy.getPlayer(uuid).ifPresent(player -> player.sendMessage(messages.prefixed("stopped")));
                 if (announce && config.notificationsEnabled()) find(uuid).ifPresent(record ->
-                        proxy.sendMessage(messages.render("off-announcement", "player", record.lastName())));
+                        proxy.sendMessage(messages.render("off-announcement", "player", record.lastName(),
+                                "link", safe(record.url()), "server", proxy.getPlayer(uuid).map(this::serverName).orElse("—"),
+                                "platform", safe(record.platform()))));
             }
             return stopped;
         }).exceptionally(error -> {
@@ -143,6 +146,10 @@ public final class StreamService {
     private void complete(Player player, Boolean success, Throwable error, String successMessage) {
         if (error != null) fail(player, error); else if (Boolean.TRUE.equals(success)) player.sendMessage(messages.prefixed(successMessage));
     }
+    private String serverName(Player player) {
+        return player.getCurrentServer().map(connection -> connection.getServerInfo().getName()).orElse("—");
+    }
+    private String safe(String value) { return value == null ? "—" : value; }
     private void fail(Player player, Throwable error) { logger.error("Stream operation failed for {}", player.getUniqueId(), error); player.sendMessage(messages.prefixed("internal-error")); }
 }
 
