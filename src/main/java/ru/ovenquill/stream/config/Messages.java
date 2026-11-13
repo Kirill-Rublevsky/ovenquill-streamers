@@ -48,6 +48,7 @@ public final class Messages {
 
     public Component prefixed(String key) { return render("prefix").append(render(key)); }
     public String raw(String key) { return values.getOrDefault(key, defaults.getOrDefault(key, "")); }
+    public String defaultRaw(String key) { return defaults.getOrDefault(key, ""); }
     public Component renderTemplate(String template, String... replacements) {
         String value = template;
         for (int i = 0; i + 1 < replacements.length; i += 2) {

@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class MessagesTest {
     @TempDir Path temporaryDirectory;
@@ -19,5 +20,7 @@ class MessagesTest {
         messages.reload();
         assertTrue(Files.readString(file).contains("start-announcement"));
         assertTrue(messages.prefixed("no-permission").toString().contains("Custom"));
+        assertNotEquals(messages.raw("start-announcement"), messages.defaultRaw("start-announcement"));
+        assertTrue(messages.defaultRaw("start-announcement").contains("СМОТРЕТЬ СТРИМ"));
     }
 }

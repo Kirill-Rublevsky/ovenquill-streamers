@@ -186,7 +186,11 @@ public final class StreamService {
 
     public CompletableFuture<Boolean> resetTemplate(Player player, String type) {
         return CompletableFuture.supplyAsync(() -> {
-            try { repository.resetTemplate(player.getUniqueId(), type); return true; }
+            try {
+                String factory = messages.defaultRaw(type.equals("start") ? "start-announcement" : "off-announcement");
+                repository.saveTemplate(player.getUniqueId(), player.getUsername(), type, factory);
+                return true;
+            }
             catch (SQLException exception) { throw new RuntimeException(exception); }
         }, executor).exceptionally(error -> { fail(player, error); return false; });
     }

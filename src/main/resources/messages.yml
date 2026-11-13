@@ -12,7 +12,7 @@ internal-error: "<color:#FF5555>Не удалось выполнить опер�
 restriction-failed: "<color:#FF5555>Не удалось безопасно ограничить административные права. Режим стримера не запущен.</color>"
 restoration-failed: "<color:#FF5555>Не удалось подтвердить восстановление прав. Завершение не выполнено; обратитесь к администрации.</color>"
 info-saved: "<color:#F5F5F5>Твой персональный шаблон уведомления сохранён.</color>"
-info-reset: "<color:#F5F5F5>Персональный шаблон сброшен до стандартного.</color>"
+info-reset: "<color:#F5F5F5>Восстановлен заводской шаблон OVENQUILL.</color>"
 info-too-long: "<color:#FF5555>Шаблон слишком длинный.</color>"
 no-permission: "<color:#FF5555>Недостаточно прав.</color>"
 reload-complete: "<color:#F5F5F5>Конфигурация и сообщения перезагружены.</color>"
