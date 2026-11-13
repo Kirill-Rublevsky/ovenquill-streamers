@@ -103,7 +103,7 @@ public final class TabService {
             if (active) {
                 setPrefix.invoke(manager, tabPlayer, "<" + prefixColor.asHexString() + ">" + prefix);
                 setName.invoke(manager, tabPlayer, "<" + nameColor.asHexString() + ">" + username);
-                if (forceTeamName != null) forceTeamName.invoke(sortingManager, tabPlayer, String.format("0000-%05d-%s", order, username));
+                if (forceTeamName != null) forceTeamName.invoke(sortingManager, tabPlayer, teamName(uuid, order));
                 externalStyled.add(uuid);
             } else {
                 setPrefix.invoke(manager, tabPlayer, (Object) null); setName.invoke(manager, tabPlayer, (Object) null);
@@ -116,6 +116,10 @@ public final class TabService {
         } catch (Exception exception) {
             if (!externalTabReported) { logger.warn("TAB plugin detected but API integration failed", exception); externalTabReported = true; }
         }
+    }
+
+    static String teamName(UUID uuid, int order) {
+        return String.format("0OQ%04d%08X", Math.max(0, Math.min(order, 9999)), uuid.hashCode());
     }
 }
 
