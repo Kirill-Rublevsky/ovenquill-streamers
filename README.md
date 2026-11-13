@@ -4,12 +4,12 @@
 
 ## Состав и установка
 
-- `OVENQUILL-STREAM-VELOCITY-1.0.0-RC1.jar` — основной плагин для `velocity/plugins/`: команды, SQLite, уведомления, permissions и TAB.
-- `OVENQUILL-STREAM-PURPUR-1.0.0-RC1.jar` — модуль для `plugins/` **каждого** Purpur-сервера: Minecraft GUI, ограничение backend-прав и защищённая связь с Velocity.
+- `OVENQUILL-STREAM-VELOCITY-1.0.0-RC2.jar` — основной плагин для `velocity/plugins/`: команды, SQLite, уведомления, permissions и TAB.
+- `OVENQUILL-STREAM-PURPUR-1.0.0-RC2.jar` — модуль для `plugins/` **каждого** Purpur-сервера: Minecraft GUI, ограничение backend-прав и защищённая связь с Velocity.
 
 Остановите всю сеть, удалите старые JAR OVENQUILL Stream, установите оба файла в указанные каталоги и запустите сначала Purpur-серверы, затем Velocity. Требуются Java 21+ и LuckPerms 5.5 на Velocity и на каждом Purpur. SQLite JDBC уже включён в основной JAR.
 
-Архив `OVENQUILL-STREAM-1.0.0-RC1-INSTALL.zip` содержит правильную структуру каталогов.
+Архив `OVENQUILL-STREAM-1.0.0-RC2-INSTALL.zip` содержит правильную структуру каталогов. RC2 повторно применяет оформление TAB через 0,5 и 2 секунды после изменения LIVE-состояния, чтобы поздние Player Info пакеты backend не стирали цвет и индикатор.
 
 ### Ошибка `ClassNotFoundException: ru.ovenquill.stream.StreamPlugin`
 
@@ -115,4 +115,4 @@ mvn -f backend/pom.xml clean package
 
 Автоматические тесты проверяют URL, SQLite, сообщения и production-конфигурацию. Отдельный smoke-тест запускает SQLite непосредственно из итогового shaded JAR. Оба модуля компилируются против Velocity 4.3.0, Purpur 26.2 и LuckPerms API 5.5.
 
-Интеграционные сценарии с реальной сетью (конфликт стороннего TAB, конкретные административные плагины, аварийное отключение процесса) должны быть подтверждены на staging-копии вашей сети перед заменой RC1 на стабильный `1.0.0`; они не выдаются за автоматически пройденные.
+Интеграционные сценарии с реальной сетью (конфликт стороннего TAB, конкретные административные плагины, аварийное отключение процесса) должны быть подтверждены на staging-копии вашей сети перед заменой RC2 на стабильный `1.0.0`; они не выдаются за автоматически пройденные.

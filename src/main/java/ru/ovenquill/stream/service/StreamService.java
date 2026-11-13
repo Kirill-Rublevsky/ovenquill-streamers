@@ -26,13 +26,16 @@ public final class StreamService {
     private final Messages messages;
     private final TabService tabService;
     private final PermissionService permissionService;
+    private final Runnable delayedTabRecovery;
     private final Executor executor;
     private final Logger logger;
 
     public StreamService(ProxyServer proxy, StreamRepository repository, PluginConfig config, Messages messages,
-                         TabService tabService, PermissionService permissionService, Executor executor, Logger logger) {
+                         TabService tabService, PermissionService permissionService, Runnable delayedTabRecovery,
+                         Executor executor, Logger logger) {
         this.proxy = proxy; this.repository = repository; this.config = config; this.messages = messages;
-        this.tabService = tabService; this.permissionService = permissionService; this.executor = executor; this.logger = logger;
+        this.tabService = tabService; this.permissionService = permissionService;
+        this.delayedTabRecovery = delayedTabRecovery; this.executor = executor; this.logger = logger;
     }
 
     public boolean isOfficial(Player player) { return player.hasPermission(OFFICIAL_PERMISSION); }
@@ -85,6 +88,7 @@ public final class StreamService {
             if (started) {
                 player.sendMessage(messages.prefixed("started"));
                 refreshTab();
+                delayedTabRecovery.run();
                 if (config.notificationsEnabled()) find(player.getUniqueId()).ifPresent(record ->
                         proxy.sendMessage(messages.render("start-announcement", "player", player.getUsername(),
                                 "link", safe(record.url()), "server", serverName(player), "platform", safe(record.platform()))));
@@ -111,6 +115,7 @@ public final class StreamService {
         }).thenApply(stopped -> {
             if (stopped) {
                 refreshTab();
+                delayedTabRecovery.run();
                 proxy.getPlayer(uuid).ifPresent(player -> player.sendMessage(messages.prefixed("stopped")));
                 if (announce && config.notificationsEnabled()) find(uuid).ifPresent(record ->
                         proxy.sendMessage(messages.render("off-announcement", "player", record.lastName(),
