@@ -5,7 +5,6 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import org.slf4j.Logger;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import ru.ovenquill.stream.config.Messages;
 import ru.ovenquill.stream.config.PluginConfig;
 
@@ -25,30 +24,32 @@ public final class EditorBridge {
     private final Messages messages;
     private final Supplier<PluginConfig> config;
     private final Logger logger;
+    private final StreamService service;
     private final Map<UUID, PendingEditor> pending = new ConcurrentHashMap<>();
 
-    public EditorBridge(Messages messages, Supplier<PluginConfig> config, Logger logger) {
-        this.messages = messages; this.config = config; this.logger = logger;
+    public EditorBridge(Messages messages, Supplier<PluginConfig> config, Logger logger, StreamService service) {
+        this.messages = messages; this.config = config; this.logger = logger; this.service = service;
     }
 
     public void open(Player player, String type) {
         if (!canEdit(player)) {
             player.sendMessage(messages.prefixed("no-permission")); return;
         }
-        player.getCurrentServer().ifPresentOrElse(connection -> {
+        service.template(player, type).thenAccept(currentTemplate -> player.getCurrentServer().ifPresentOrElse(connection -> {
             UUID nonce = UUID.randomUUID();
             pending.put(player.getUniqueId(), new PendingEditor(nonce, type, Instant.now().plus(Duration.ofMinutes(5))));
             try (ByteArrayOutputStream bytes = new ByteArrayOutputStream(); DataOutputStream out = new DataOutputStream(bytes)) {
                 out.writeUTF("OPEN_EDITOR"); out.writeUTF(player.getUniqueId().toString());
                 out.writeUTF(nonce.toString()); out.writeUTF(type);
-                out.writeUTF(messages.raw(type.equals("start") ? "start-announcement" : "off-announcement"));
+                out.writeUTF(currentTemplate);
                 connection.sendPluginMessage(CHANNEL, bytes.toByteArray());
             } catch (Exception exception) {
                 pending.remove(player.getUniqueId());
                 logger.error("Failed to open editor", exception);
                 player.sendMessage(messages.prefixed("internal-error"));
             }
-        }, () -> player.sendMessage(messages.prefixed("internal-error")));
+        }, () -> player.sendMessage(messages.prefixed("internal-error"))))
+                .exceptionally(error -> { logger.error("Failed to load personal stream template", error); player.sendMessage(messages.prefixed("internal-error")); return null; });
     }
 
     public void handle(PluginMessageEvent event) {
@@ -70,9 +71,10 @@ public final class EditorBridge {
             if (template.length() > config.get().maxMessageLength()) {
                 player.sendMessage(messages.prefixed("info-too-long")); return;
             }
-            MiniMessage.miniMessage().deserialize(template);
-            messages.update(type.equals("start") ? "start-announcement" : "off-announcement", template);
-            player.sendMessage(messages.prefixed("info-saved"));
+            messages.validateTemplate(template);
+            service.saveTemplate(player, type, template).thenAccept(saved -> {
+                if (saved) player.sendMessage(messages.prefixed("info-saved"));
+            });
         } catch (Exception exception) {
             logger.warn("Rejected malformed editor response from {}", source.getServerInfo().getName(), exception);
             player.sendMessage(messages.prefixed("internal-error"));

@@ -42,6 +42,7 @@ public final class OvenquillStreamBackend extends JavaPlugin implements PluginMe
     private static final MiniMessage MINI = MiniMessage.miniMessage();
     private final Map<UUID, EditorSession> sessions = new HashMap<>();
     private final Map<UUID, List<Node>> restrictionNodes = new HashMap<>();
+    private final Map<UUID, Component> originalListNames = new HashMap<>();
     private LuckPerms luckPerms;
 
     @Override public void onEnable() {
@@ -58,6 +59,14 @@ public final class OvenquillStreamBackend extends JavaPlugin implements PluginMe
         if (!CHANNEL.equals(channel) || data.length > 4096) return;
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(data))) {
             String action = in.readUTF();
+            if (action.equals("TAB_APPLY") || action.equals("TAB_RESTORE")) {
+                UUID playerId = UUID.fromString(in.readUTF()); if (!player.getUniqueId().equals(playerId)) return;
+                if (action.equals("TAB_APPLY")) {
+                    String prefix = in.readUTF(); String prefixColor = in.readUTF(); String nameColor = in.readUTF();
+                    Bukkit.getScheduler().runTask(this, () -> applyTab(player, prefix, prefixColor, nameColor));
+                } else Bukkit.getScheduler().runTask(this, () -> restoreTab(player));
+                return;
+            }
             if (action.equals("RESTRICT") || action.equals("RESTORE")) {
                 UUID playerId = UUID.fromString(in.readUTF()); UUID nonce = UUID.fromString(in.readUTF());
                 int count = in.readInt(); if (count < 0 || count > 100) return;
@@ -80,6 +89,19 @@ public final class OvenquillStreamBackend extends JavaPlugin implements PluginMe
         } catch (Exception ex) {
             getLogger().warning("Отклонено некорректное сообщение редактора: " + ex.getMessage());
         }
+    }
+
+    private void applyTab(Player player, String prefix, String prefixColor, String nameColor) {
+        originalListNames.putIfAbsent(player.getUniqueId(), player.playerListName());
+        net.kyori.adventure.text.format.TextColor prefixParsed = net.kyori.adventure.text.format.TextColor.fromHexString(prefixColor);
+        net.kyori.adventure.text.format.TextColor nameParsed = net.kyori.adventure.text.format.TextColor.fromHexString(nameColor);
+        if (prefixParsed == null) prefixParsed = NamedTextColor.RED;
+        if (nameParsed == null) nameParsed = NamedTextColor.LIGHT_PURPLE;
+        player.playerListName(Component.text(prefix, prefixParsed).append(Component.text(player.getName(), nameParsed)));
+    }
+
+    private void restoreTab(Player player) {
+        if (originalListNames.containsKey(player.getUniqueId())) player.playerListName(originalListNames.remove(player.getUniqueId()));
     }
 
     private boolean restrict(Player player, List<String> prefixes) {

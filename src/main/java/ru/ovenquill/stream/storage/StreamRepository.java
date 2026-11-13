@@ -28,12 +28,16 @@ public final class StreamRepository implements AutoCloseable {
                       last_name TEXT NOT NULL,
                       url TEXT,
                       platform TEXT,
+                      start_template TEXT,
+                      off_template TEXT,
                       active INTEGER NOT NULL DEFAULT 0,
                       started_at INTEGER,
                       ended_at INTEGER,
                       updated_at INTEGER NOT NULL
                     )
                     """);
+            addColumnIfMissing(statement, "start_template", "TEXT");
+            addColumnIfMissing(statement, "off_template", "TEXT");
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS admin_audit (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,6 +95,17 @@ public final class StreamRepository implements AutoCloseable {
         }
     }
 
+    public synchronized void saveTemplate(UUID uuid, String name, String type, String template) throws SQLException {
+        String column = type.equals("start") ? "start_template" : "off_template";
+        String sql = "INSERT INTO streamers(uuid,last_name," + column + ",active,updated_at) VALUES(?,?,?,0,?) "
+                + "ON CONFLICT(uuid) DO UPDATE SET last_name=excluded.last_name," + column
+                + "=excluded." + column + ",updated_at=excluded.updated_at";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, uuid.toString()); statement.setString(2, name);
+            statement.setString(3, template); statement.setLong(4, Instant.now().toEpochMilli()); statement.executeUpdate();
+        }
+    }
+
     public synchronized boolean activate(UUID uuid, String name, Instant startedAt) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 UPDATE streamers SET last_name=?,active=1,started_at=?,ended_at=NULL,updated_at=?
@@ -137,8 +152,16 @@ public final class StreamRepository implements AutoCloseable {
 
     private static StreamRecord map(ResultSet rs) throws SQLException {
         return new StreamRecord(UUID.fromString(rs.getString("uuid")), rs.getString("last_name"),
-                rs.getString("url"), rs.getString("platform"), rs.getBoolean("active"),
+                rs.getString("url"), rs.getString("platform"), rs.getString("start_template"),
+                rs.getString("off_template"), rs.getBoolean("active"),
                 instant(rs, "started_at"), instant(rs, "ended_at"));
+    }
+
+    private static void addColumnIfMissing(Statement statement, String column, String type) throws SQLException {
+        try { statement.executeUpdate("ALTER TABLE streamers ADD COLUMN " + column + " " + type); }
+        catch (SQLException exception) {
+            if (!exception.getMessage().toLowerCase().contains("duplicate column")) throw exception;
+        }
     }
 
     private static Instant instant(ResultSet rs, String column) throws SQLException {

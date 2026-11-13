@@ -88,9 +88,10 @@ public final class StreamService {
             if (started) {
                 player.sendMessage(messages.prefixed("started"));
                 refreshTab();
+                permissionService.syncTab(player, true);
                 delayedTabRecovery.run();
                 if (config.notificationsEnabled()) find(player.getUniqueId()).ifPresent(record ->
-                        proxy.sendMessage(messages.render("start-announcement", "player", player.getUsername(),
+                        proxy.sendMessage(messages.renderTemplate(template(record, "start"), "player", player.getUsername(),
                                 "link", safe(record.url()), "server", serverName(player), "platform", safe(record.platform()))));
             }
             return started;
@@ -115,10 +116,11 @@ public final class StreamService {
         }).thenApply(stopped -> {
             if (stopped) {
                 refreshTab();
+                proxy.getPlayer(uuid).ifPresent(player -> permissionService.syncTab(player, false));
                 delayedTabRecovery.run();
                 proxy.getPlayer(uuid).ifPresent(player -> player.sendMessage(messages.prefixed("stopped")));
                 if (announce && config.notificationsEnabled()) find(uuid).ifPresent(record ->
-                        proxy.sendMessage(messages.render("off-announcement", "player", record.lastName(),
+                        proxy.sendMessage(messages.renderTemplate(template(record, "off"), "player", record.lastName(),
                                 "link", safe(record.url()), "server", proxy.getPlayer(uuid).map(this::serverName).orElse("—"),
                                 "platform", safe(record.platform()))));
             }
@@ -169,6 +171,19 @@ public final class StreamService {
         return CompletableFuture.supplyAsync(() -> findByName(name), executor);
     }
 
+    public CompletableFuture<Boolean> saveTemplate(Player player, String type, String template) {
+        return CompletableFuture.supplyAsync(() -> {
+            try { repository.saveTemplate(player.getUniqueId(), player.getUsername(), type, template); return true; }
+            catch (SQLException exception) { throw new RuntimeException(exception); }
+        }, executor).exceptionally(error -> { fail(player, error); return false; });
+    }
+
+    public CompletableFuture<String> template(Player player, String type) {
+        return CompletableFuture.supplyAsync(() -> find(player.getUniqueId())
+                .map(record -> template(record, type))
+                .orElse(messages.raw(type.equals("start") ? "start-announcement" : "off-announcement")), executor);
+    }
+
     public void synchronizePlayerRestrictions(Player player) {
         CompletableFuture.supplyAsync(() -> find(player.getUniqueId()).map(StreamRecord::active).orElse(false), executor)
                 .thenAccept(active -> permissionService.ensure(player, active));
@@ -181,6 +196,11 @@ public final class StreamService {
         return player.getCurrentServer().map(connection -> connection.getServerInfo().getName()).orElse("—");
     }
     private String safe(String value) { return value == null ? "—" : value; }
+    private String template(StreamRecord record, String type) {
+        String personal = type.equals("start") ? record.startTemplate() : record.offTemplate();
+        return personal == null || personal.isBlank()
+                ? messages.raw(type.equals("start") ? "start-announcement" : "off-announcement") : personal;
+    }
     private void fail(Player player, Throwable error) { logger.error("Stream operation failed for {}", player.getUniqueId(), error); player.sendMessage(messages.prefixed("internal-error")); }
 }
 

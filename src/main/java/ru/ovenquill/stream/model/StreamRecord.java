@@ -8,6 +8,8 @@ public record StreamRecord(
         String lastName,
         String url,
         String platform,
+        String startTemplate,
+        String offTemplate,
         boolean active,
         Instant startedAt,
         Instant endedAt

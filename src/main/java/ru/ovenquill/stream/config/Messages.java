@@ -44,9 +44,17 @@ public final class Messages {
         Files.writeString(file, new Yaml().dump(updated));
         values = Map.copyOf(updated);
     }
+    public void validateTemplate(String value) { strictMiniMessage.deserialize(value); }
 
     public Component prefixed(String key) { return render("prefix").append(render(key)); }
     public String raw(String key) { return values.getOrDefault(key, defaults.getOrDefault(key, "")); }
+    public Component renderTemplate(String template, String... replacements) {
+        String value = template;
+        for (int i = 0; i + 1 < replacements.length; i += 2) {
+            value = value.replace("{" + replacements[i] + "}", escape(replacements[i + 1]));
+        }
+        return miniMessage.deserialize(value);
+    }
     public Component render(String key, String... replacements) {
         String value = values.getOrDefault(key, "<red>Missing message: " + key + "</red>");
         for (int i = 0; i + 1 < replacements.length; i += 2) {

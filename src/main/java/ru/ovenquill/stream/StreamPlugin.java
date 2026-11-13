@@ -26,7 +26,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "1.0.0-RC2",
+@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "1.0.0-RC3",
         description = "Official streamer system for OVENQUILL", authors = {"OVENQUILL"},
         dependencies = {@Dependency(id = "luckperms")})
 public final class StreamPlugin {
@@ -55,18 +55,18 @@ public final class StreamPlugin {
             if (!storagePath.startsWith(dataDirectory.normalize())) throw new IllegalArgumentException("storage.file escapes plugin directory");
             repository = new StreamRepository(storagePath);
             TabService tabService = new TabService(proxy, config.tabEnabled(), config.tabPriority(), config.tabPrefix(),
-                    config.tabPrefixColor(), config.tabNameColor());
+                    config.tabPrefixColor(), config.tabNameColor(), logger);
             permissionService = new PermissionService(() -> config, logger);
             service = new StreamService(proxy, repository, config, messages, tabService, permissionService,
                     this::scheduleTabRecovery, databaseExecutor, logger);
-            editorBridge = new EditorBridge(messages, () -> config, logger);
+            editorBridge = new EditorBridge(messages, () -> config, logger, service);
             proxy.getChannelRegistrar().register(EditorBridge.CHANNEL);
             proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("stream").plugin(this).build(),
                     new StreamCommand(service, messages, () -> config, this::reload, editorBridge::open));
             proxy.getScheduler().buildTask(this, service::synchronizePermissions)
                     .repeat(Duration.ofSeconds(Math.max(5, config.permissionSyncSeconds()))).schedule();
             service.synchronizePermissions();
-            logger.info("OVENQUILL Stream 1.0.0-RC2 initialized from {}",
+            logger.info("OVENQUILL Stream 1.0.0-RC3 initialized from {}",
                     StreamPlugin.class.getProtectionDomain().getCodeSource().getLocation());
         } catch (Exception exception) {
             logger.error("OVENQUILL Stream failed to initialize", exception);

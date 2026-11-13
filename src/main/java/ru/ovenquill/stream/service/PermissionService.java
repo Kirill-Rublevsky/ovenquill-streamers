@@ -53,8 +53,22 @@ public final class PermissionService {
     }
 
     public void ensure(Player player, boolean active) {
+        syncTab(player, active);
         if (active) restrict(player).thenAccept(ok -> { if (!ok) logger.error("Failed to reapply LIVE restrictions to {}", player.getUniqueId()); });
         else requestBackend(player, "RESTORE");
+    }
+
+    public void syncTab(Player player, boolean active) {
+        player.getCurrentServer().ifPresent(connection -> {
+            try (ByteArrayOutputStream bytes = new ByteArrayOutputStream(); DataOutputStream out = new DataOutputStream(bytes)) {
+                out.writeUTF(active ? "TAB_APPLY" : "TAB_RESTORE"); out.writeUTF(player.getUniqueId().toString());
+                if (active) {
+                    out.writeUTF(config.get().tabPrefix()); out.writeUTF(config.get().tabPrefixColor());
+                    out.writeUTF(config.get().tabNameColor());
+                }
+                connection.sendPluginMessage(EditorBridge.CHANNEL, bytes.toByteArray());
+            } catch (Exception exception) { logger.warn("Failed to synchronize backend TAB style for {}", player.getUniqueId(), exception); }
+        });
     }
 
     private boolean applyProxy(Player player) {

@@ -81,8 +81,16 @@ public final class StreamCommand implements SimpleCommand {
             return;
         }
         try {
-            messages.update(args[1].equalsIgnoreCase("start") ? "start-announcement" : "off-announcement", template);
-            source.sendMessage(messages.prefixed("info-saved"));
+            messages.validateTemplate(template);
+            String type = args[1].equalsIgnoreCase("start") ? "start" : "off";
+            if (source instanceof Player player) {
+                service.saveTemplate(player, type, template).thenAccept(saved -> {
+                    if (saved) source.sendMessage(messages.prefixed("info-saved"));
+                });
+            } else {
+                messages.update(type.equals("start") ? "start-announcement" : "off-announcement", template);
+                source.sendMessage(messages.prefixed("info-saved"));
+            }
         } catch (Exception exception) {
             source.sendMessage(messages.prefixed("internal-error"));
         }
