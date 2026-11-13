@@ -106,6 +106,14 @@ public final class StreamRepository implements AutoCloseable {
         }
     }
 
+    public synchronized void resetTemplate(UUID uuid, String type) throws SQLException {
+        String column = type.equals("start") ? "start_template" : "off_template";
+        try (PreparedStatement statement = connection.prepareStatement(
+                "UPDATE streamers SET " + column + "=NULL,updated_at=? WHERE uuid=?")) {
+            statement.setLong(1, Instant.now().toEpochMilli()); statement.setString(2, uuid.toString()); statement.executeUpdate();
+        }
+    }
+
     public synchronized boolean activate(UUID uuid, String name, Instant startedAt) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 UPDATE streamers SET last_name=?,active=1,started_at=?,ended_at=NULL,updated_at=?

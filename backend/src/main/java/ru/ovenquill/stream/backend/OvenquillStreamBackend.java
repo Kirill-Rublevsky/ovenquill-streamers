@@ -165,6 +165,7 @@ public final class OvenquillStreamBackend extends JavaPlugin implements PluginMe
         menu.setItem(24, toggle(Material.IRON_SWORD, "Зачёркивание", session.strikethrough));
         menu.setItem(31, preview(session));
         menu.setItem(45, item(Material.WRITABLE_BOOK, Component.text("Изменить текст", NamedTextColor.AQUA), List.of(Component.text("Ввод будет только в чате", NamedTextColor.GRAY), Component.text("Сообщение не увидят игроки", NamedTextColor.DARK_GRAY))));
+        menu.setItem(48, item(Material.RECOVERY_COMPASS, Component.text("Сбросить до стандартного", NamedTextColor.YELLOW), List.of(Component.text("Удалить персональные настройки", NamedTextColor.GRAY), Component.text("Вернуть шаблон из messages.yml", NamedTextColor.DARK_GRAY))));
         menu.setItem(49, item(Material.BARRIER, Component.text("Отмена", NamedTextColor.RED), List.of()));
         menu.setItem(53, item(Material.LIME_CONCRETE, Component.text("Сохранить", NamedTextColor.GREEN), List.of(Component.text("Отправить настройки на Velocity", NamedTextColor.GRAY))));
         player.openInventory(menu);
@@ -189,6 +190,7 @@ public final class OvenquillStreamBackend extends JavaPlugin implements PluginMe
             player.closeInventory();
             player.sendMessage(Component.text("Введите текст оповещения в чат. Для отмены: отмена", NamedTextColor.LIGHT_PURPLE));
             return;
+        } else if (slot == 48) { reset(player, session); return;
         } else if (slot == 49) {
             sessions.remove(player.getUniqueId()); player.closeInventory();
             player.sendMessage(Component.text("Редактирование отменено.", NamedTextColor.GRAY)); return;
@@ -229,6 +231,17 @@ public final class OvenquillStreamBackend extends JavaPlugin implements PluginMe
         } catch (Exception ex) {
             getLogger().warning("Не удалось сохранить текст: " + ex.getMessage());
             player.sendMessage(Component.text("Не удалось отправить изменения на прокси.", NamedTextColor.RED));
+        }
+    }
+
+    private void reset(Player player, EditorSession session) {
+        try (ByteArrayOutputStream bytes = new ByteArrayOutputStream(); DataOutputStream out = new DataOutputStream(bytes)) {
+            out.writeUTF("RESET_EDITOR"); out.writeUTF(player.getUniqueId().toString()); out.writeUTF(session.nonce.toString());
+            out.writeUTF(session.type); player.sendPluginMessage(this, CHANNEL, bytes.toByteArray());
+            sessions.remove(player.getUniqueId()); player.closeInventory();
+        } catch (Exception ex) {
+            getLogger().warning("Не удалось сбросить текст: " + ex.getMessage());
+            player.sendMessage(Component.text("Не удалось отправить сброс на прокси.", NamedTextColor.RED));
         }
     }
 

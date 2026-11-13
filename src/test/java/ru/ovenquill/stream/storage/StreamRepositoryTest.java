@@ -21,6 +21,8 @@ class StreamRepositoryTest {
             assertTrue(repository.find(uuid).isPresent());
             assertEquals("https://twitch.tv/tester", repository.find(uuid).orElseThrow().url());
             assertEquals("<red>{player} test</red>", repository.find(uuid).orElseThrow().startTemplate());
+            repository.resetTemplate(uuid, "start");
+            assertEquals(null, repository.find(uuid).orElseThrow().startTemplate());
         }
     }
 

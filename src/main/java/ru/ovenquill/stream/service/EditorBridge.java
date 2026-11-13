@@ -58,16 +58,23 @@ public final class EditorBridge {
         if (!(event.getSource() instanceof ServerConnection source) || !(event.getTarget() instanceof Player player)) return;
         if (player.getCurrentServer().map(current -> !current.getServerInfo().equals(source.getServerInfo())).orElse(true)) return;
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(event.getData()))) {
-            if (!"SAVE_EDITOR".equals(input.readUTF())) return;
+            String action = input.readUTF();
+            if (!(action.equals("SAVE_EDITOR") || action.equals("RESET_EDITOR"))) return;
             UUID playerId = UUID.fromString(input.readUTF());
             UUID nonce = UUID.fromString(input.readUTF());
             String type = input.readUTF();
-            String template = input.readUTF();
             PendingEditor expected = pending.remove(playerId);
             if (!player.getUniqueId().equals(playerId) || expected == null || expected.expiresAt().isBefore(Instant.now())
                     || !expected.nonce().equals(nonce) || !expected.type().equals(type)
                     || !(type.equals("start") || type.equals("off"))
                     || !canEdit(player)) return;
+            if (action.equals("RESET_EDITOR")) {
+                service.resetTemplate(player, type).thenAccept(reset -> {
+                    if (reset) player.sendMessage(messages.prefixed("info-reset"));
+                });
+                return;
+            }
+            String template = input.readUTF();
             if (template.length() > config.get().maxMessageLength()) {
                 player.sendMessage(messages.prefixed("info-too-long")); return;
             }

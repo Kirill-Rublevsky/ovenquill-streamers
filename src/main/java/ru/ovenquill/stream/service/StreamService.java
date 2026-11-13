@@ -184,6 +184,13 @@ public final class StreamService {
                 .orElse(messages.raw(type.equals("start") ? "start-announcement" : "off-announcement")), executor);
     }
 
+    public CompletableFuture<Boolean> resetTemplate(Player player, String type) {
+        return CompletableFuture.supplyAsync(() -> {
+            try { repository.resetTemplate(player.getUniqueId(), type); return true; }
+            catch (SQLException exception) { throw new RuntimeException(exception); }
+        }, executor).exceptionally(error -> { fail(player, error); return false; });
+    }
+
     public void synchronizePlayerRestrictions(Player player) {
         CompletableFuture.supplyAsync(() -> find(player.getUniqueId()).map(StreamRecord::active).orElse(false), executor)
                 .thenAccept(active -> permissionService.ensure(player, active));
