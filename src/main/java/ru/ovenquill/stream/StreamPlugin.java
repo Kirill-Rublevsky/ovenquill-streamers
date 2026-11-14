@@ -26,7 +26,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "1.0.0-RC6",
+@Plugin(id = "ovenquill-stream", name = "OVENQUILL Stream", version = "1.0.0-RC7",
         description = "Official streamer system for OVENQUILL", authors = {"OVENQUILL"},
         dependencies = {@Dependency(id = "luckperms")})
 public final class StreamPlugin {
@@ -62,11 +62,11 @@ public final class StreamPlugin {
             editorBridge = new EditorBridge(messages, () -> config, logger, service);
             proxy.getChannelRegistrar().register(EditorBridge.CHANNEL);
             proxy.getCommandManager().register(proxy.getCommandManager().metaBuilder("stream").plugin(this).build(),
-                    new StreamCommand(service, messages, () -> config, this::reload, editorBridge::open));
+                    new StreamCommand(service, messages, () -> config, this::reload, editorBridge::open, permissionService));
             proxy.getScheduler().buildTask(this, service::synchronizePermissions)
                     .repeat(Duration.ofSeconds(Math.max(5, config.permissionSyncSeconds()))).schedule();
             service.synchronizePermissions();
-            logger.info("OVENQUILL Stream 1.0.0-RC6 initialized from {}",
+            logger.info("OVENQUILL Stream 1.0.0-RC7 initialized from {}",
                     StreamPlugin.class.getProtectionDomain().getCodeSource().getLocation());
         } catch (Exception exception) {
             logger.error("OVENQUILL Stream failed to initialize", exception);

@@ -9,6 +9,7 @@ import ru.ovenquill.stream.config.Messages;
 import ru.ovenquill.stream.config.PluginConfig;
 import ru.ovenquill.stream.model.StreamRecord;
 import ru.ovenquill.stream.service.StreamService;
+import ru.ovenquill.stream.service.PermissionService;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -31,14 +32,16 @@ public final class StreamCommand implements SimpleCommand {
     private final Supplier<PluginConfig> config;
     private final Runnable reload;
     private final BiConsumer<Player, String> openEditor;
+    private final PermissionService permissionService;
 
     public StreamCommand(StreamService service, Messages messages, Supplier<PluginConfig> config, Runnable reload,
-                         BiConsumer<Player, String> openEditor) {
+                         BiConsumer<Player, String> openEditor, PermissionService permissionService) {
         this.service = service;
         this.messages = messages;
         this.config = config;
         this.reload = reload;
         this.openEditor = openEditor;
+        this.permissionService = permissionService;
     }
 
     @Override public void execute(Invocation invocation) {
@@ -47,6 +50,8 @@ public final class StreamCommand implements SimpleCommand {
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) { help(source); return; }
         if (args[0].equalsIgnoreCase("info")) { info(source, args); return; }
         if (args[0].equalsIgnoreCase("admin")) { admin(source, args); return; }
+        if (args[0].equalsIgnoreCase("add")) { official(source, args, true); return; }
+        if (args[0].equalsIgnoreCase("remove")) { official(source, args, false); return; }
         if (!(source instanceof Player player)) {
             source.sendMessage(Component.text("Эта подкоманда доступна только игроку.", NamedTextColor.RED));
             return;
@@ -62,6 +67,25 @@ public final class StreamCommand implements SimpleCommand {
                     .thenAccept(stopped -> { if (Boolean.FALSE.equals(stopped)) player.sendMessage(messages.prefixed("not-active")); });
             default -> help(source);
         }
+    }
+
+    private void official(CommandSource source, String[] args, boolean grant) {
+        if (!source.hasPermission(ADMIN)) { source.sendMessage(messages.prefixed("no-permission")); return; }
+        if (args.length != 2) {
+            source.sendMessage(Component.text(grant ? "/stream add <ник>" : "/stream remove <ник>"));
+            return;
+        }
+        permissionService.setOfficial(args[1], grant).thenAccept(username -> {
+            if (username == null) {
+                source.sendMessage(messages.prefixed("player-not-found"));
+                return;
+            }
+            source.sendMessage(messages.render(grant ? "official-added" : "official-removed", "player", username));
+            service.synchronizePermissions();
+        }).exceptionally(error -> {
+            source.sendMessage(messages.prefixed("official-change-failed"));
+            return null;
+        });
     }
 
     private void info(CommandSource source, String[] args) {
@@ -157,7 +181,7 @@ public final class StreamCommand implements SimpleCommand {
             result.add("help");
             if (source instanceof Player player && service.isOfficial(player)) result.addAll(List.of("link", "start", "off"));
             if (canEditInfo(source)) result.add("info");
-            if (source.hasPermission(ADMIN)) result.add("admin");
+            if (source.hasPermission(ADMIN)) result.addAll(List.of("add", "remove", "admin"));
             return result;
         }
         if (args[0].equalsIgnoreCase("info") && args.length == 2 && canEditInfo(source)) return List.of("start", "off");
@@ -173,7 +197,11 @@ public final class StreamCommand implements SimpleCommand {
             source.sendMessage(Component.text("/stream off — завершить трансляцию"));
         }
         if (canEditInfo(source)) source.sendMessage(Component.text("/stream info <start|off> — открыть редактор уведомления"));
-        if (source.hasPermission(ADMIN)) source.sendMessage(Component.text("/stream admin ... — административные команды"));
+        if (source.hasPermission(ADMIN)) {
+            source.sendMessage(Component.text("/stream add <ник> — выдать статус официального стримера"));
+            source.sendMessage(Component.text("/stream remove <ник> — отозвать статус официального стримера"));
+            source.sendMessage(Component.text("/stream admin ... — административные команды"));
+        }
         source.sendMessage(Component.text("/stream help — показать помощь"));
         source.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", NamedTextColor.DARK_GREEN));
     }

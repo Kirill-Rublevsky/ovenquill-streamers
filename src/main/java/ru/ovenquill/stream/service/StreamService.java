@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class StreamService {
     public static final String OFFICIAL_PERMISSION = "ovenquill.stream.official";
@@ -29,6 +30,8 @@ public final class StreamService {
     private final Runnable delayedTabRecovery;
     private final Executor executor;
     private final Logger logger;
+    private final AtomicBoolean permissionSyncRunning = new AtomicBoolean();
+    private final AtomicBoolean tabRefreshRunning = new AtomicBoolean();
 
     public StreamService(ProxyServer proxy, StreamRepository repository, PluginConfig config, Messages messages,
                          TabService tabService, PermissionService permissionService, Runnable delayedTabRecovery,
@@ -133,6 +136,7 @@ public final class StreamService {
     }
 
     public void synchronizePermissions() {
+        if (!permissionSyncRunning.compareAndSet(false, true)) return;
         CompletableFuture.supplyAsync(() -> {
             try { return repository.findActive(); } catch (SQLException exception) { throw new RuntimeException(exception); }
         }, executor).thenAccept(active -> {
@@ -141,13 +145,20 @@ public final class StreamService {
             for (StreamRecord record : active) proxy.getPlayer(record.uuid()).filter(player -> !isOfficial(player))
                     .ifPresent(player -> stop(record.uuid(), "permission-sync", "OFFICIAL_PERMISSION_REVOKED", true));
             tabService.refresh(retained);
-        }).exceptionally(error -> { logger.error("Permission synchronization failed", error); return null; });
+        }).whenComplete((ignored, error) -> {
+            permissionSyncRunning.set(false);
+            if (error != null) logger.error("Permission synchronization failed", error);
+        });
     }
 
     public void refreshTab() {
+        if (!tabRefreshRunning.compareAndSet(false, true)) return;
         CompletableFuture.supplyAsync(() -> {
             try { return repository.findActive(); } catch (SQLException exception) { throw new RuntimeException(exception); }
-        }, executor).thenAccept(tabService::refresh).exceptionally(error -> { logger.error("TAB refresh failed", error); return null; });
+        }, executor).thenAccept(tabService::refresh).whenComplete((ignored, error) -> {
+            tabRefreshRunning.set(false);
+            if (error != null) logger.error("TAB refresh failed", error);
+        });
     }
 
     public Optional<StreamRecord> find(UUID uuid) {

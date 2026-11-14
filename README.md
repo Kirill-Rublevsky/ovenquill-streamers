@@ -4,12 +4,12 @@
 
 ## Состав и установка
 
-- `OVENQUILL-STREAM-VELOCITY-1.0.0-RC6.jar` — основной плагин для `velocity/plugins/`: команды, SQLite, уведомления, permissions и TAB.
-- `OVENQUILL-STREAM-PURPUR-1.0.0-RC6.jar` — модуль для `plugins/` **каждого** Purpur-сервера: Minecraft GUI, ограничение backend-прав и защищённая связь с Velocity.
+- `OVENQUILL-STREAM-VELOCITY-1.0.0-RC7.jar` — основной плагин для `velocity/plugins/`: команды, SQLite, уведомления, permissions и TAB.
+- `OVENQUILL-STREAM-PURPUR-1.0.0-RC7.jar` — модуль для `plugins/` **каждого** Purpur-сервера: Minecraft GUI, ограничение backend-прав и защищённая связь с Velocity.
 
 Остановите всю сеть, удалите старые JAR OVENQUILL Stream, установите оба файла в указанные каталоги и запустите сначала Purpur-серверы, затем Velocity. Требуются Java 21+ и LuckPerms 5.5 на Velocity и на каждом Purpur. SQLite JDBC уже включён в основной JAR.
 
-Архив `OVENQUILL-STREAM-1.0.0-RC6-INSTALL.zip` содержит правильную структуру каталогов. RC6 восстанавливает заводские сообщения непосредственно из ресурсов JAR, поэтому изменённый `messages.yml` больше не влияет на кнопку сброса.
+Архив `OVENQUILL-STREAM-1.0.0-RC7-INSTALL.zip` содержит правильную структуру каталогов. RC7 добавляет управление official-статусом через LuckPerms и устраняет лишние параллельные синхронизации SQLite/TAB.
 
 ### Ошибка `ClassNotFoundException: ru.ovenquill.stream.StreamPlugin`
 
@@ -40,6 +40,8 @@
 | `/stream admin stop <player>` | Принудительно завершает трансляцию независимо от official-статуса. |
 | `/stream admin status <player>` | Показывает UUID, ссылку, платформу, активность и время запуска. |
 | `/stream admin reload` | Перечитывает `config.yml` и `messages.yml`. |
+| `/stream add <ник>` | Выдаёт `ovenquill.stream.official` через LuckPerms. |
+| `/stream remove <ник>` | Отзывает official-статус через LuckPerms. |
 
 ## Permissions и LuckPerms
 

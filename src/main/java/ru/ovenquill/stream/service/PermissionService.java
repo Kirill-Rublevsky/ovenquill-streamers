@@ -37,6 +37,23 @@ public final class PermissionService {
         this.config = config; this.logger = logger; this.luckPerms = LuckPermsProvider.get();
     }
 
+    public CompletableFuture<String> setOfficial(String username, boolean official) {
+        String normalized = username == null ? "" : username.trim();
+        if (!normalized.matches("[A-Za-z0-9_]{3,16}")) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Invalid Minecraft username"));
+        }
+        return luckPerms.getUserManager().lookupUniqueId(normalized).thenCompose(uuid -> {
+            if (uuid == null) return CompletableFuture.completedFuture(null);
+            return luckPerms.getUserManager().loadUser(uuid).thenCompose(user -> {
+                user.data().toCollection().stream()
+                        .filter(node -> node.getKey().equals(StreamService.OFFICIAL_PERMISSION))
+                        .toList().forEach(user.data()::remove);
+                user.data().add(PermissionNode.builder(StreamService.OFFICIAL_PERMISSION).value(official).build());
+                return luckPerms.getUserManager().saveUser(user).thenApply(ignored -> user.getUsername());
+            });
+        });
+    }
+
     public CompletableFuture<Boolean> restrict(Player player) {
         if (!config.get().restrictAdmin()) return CompletableFuture.completedFuture(true);
         boolean proxyApplied = applyProxy(player);
