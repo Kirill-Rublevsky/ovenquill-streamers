@@ -70,7 +70,7 @@ public final class StreamCommand implements SimpleCommand {
     }
 
     private void official(CommandSource source, String[] args, boolean grant) {
-        if (!source.hasPermission(ADMIN)) { source.sendMessage(messages.prefixed("no-permission")); return; }
+        if (!isAdmin(source)) { source.sendMessage(messages.prefixed("no-permission")); return; }
         if (args.length != 2) {
             source.sendMessage(Component.text(grant ? "/stream add <ник>" : "/stream remove <ник>"));
             return;
@@ -121,7 +121,7 @@ public final class StreamCommand implements SimpleCommand {
     }
 
     private void admin(CommandSource source, String[] args) {
-        if (!source.hasPermission(ADMIN)) { source.sendMessage(messages.prefixed("no-permission")); return; }
+        if (!isAdmin(source)) { source.sendMessage(messages.prefixed("no-permission")); return; }
         if (args.length < 2) { adminHelp(source); return; }
         switch (args[1].toLowerCase(Locale.ROOT)) {
             case "list" -> service.activeAsync().thenAccept(records -> {
@@ -181,11 +181,11 @@ public final class StreamCommand implements SimpleCommand {
             result.add("help");
             if (source instanceof Player player && service.isOfficial(player)) result.addAll(List.of("link", "start", "off"));
             if (canEditInfo(source)) result.add("info");
-            if (source.hasPermission(ADMIN)) result.addAll(List.of("add", "remove", "admin"));
+            if (isAdmin(source)) result.addAll(List.of("add", "remove", "admin"));
             return result;
         }
         if (args[0].equalsIgnoreCase("info") && args.length == 2 && canEditInfo(source)) return List.of("start", "off");
-        if (args[0].equalsIgnoreCase("admin") && args.length == 2 && source.hasPermission(ADMIN)) return List.of("list", "stop", "status", "reload");
+        if (args[0].equalsIgnoreCase("admin") && args.length == 2 && isAdmin(source)) return List.of("list", "stop", "status", "reload");
         return List.of();
     }
 
@@ -197,7 +197,7 @@ public final class StreamCommand implements SimpleCommand {
             source.sendMessage(Component.text("/stream off — завершить трансляцию"));
         }
         if (canEditInfo(source)) source.sendMessage(Component.text("/stream info <start|off> — открыть редактор уведомления"));
-        if (source.hasPermission(ADMIN)) {
+        if (isAdmin(source)) {
             source.sendMessage(Component.text("/stream add <ник> — выдать статус официального стримера"));
             source.sendMessage(Component.text("/stream remove <ник> — отозвать статус официального стримера"));
             source.sendMessage(Component.text("/stream admin ... — административные команды"));
@@ -215,5 +215,12 @@ public final class StreamCommand implements SimpleCommand {
 
     private boolean canEditInfo(CommandSource source) {
         return source.hasPermission(INFO) || source instanceof Player player && service.isOfficial(player);
+    }
+
+    private boolean isAdmin(CommandSource source) {
+        if (source.hasPermission(ADMIN)) return true;
+        if (source instanceof Player player && permissionService.isProxyRestricted(player.getUniqueId())) return false;
+        return source.hasPermission("*") || source.hasPermission("ovenquill.*")
+                || source.hasPermission("ovenquill.stream.*");
     }
 }

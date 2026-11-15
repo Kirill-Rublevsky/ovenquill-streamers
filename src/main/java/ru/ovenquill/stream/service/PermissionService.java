@@ -37,6 +37,10 @@ public final class PermissionService {
         this.config = config; this.logger = logger; this.luckPerms = LuckPermsProvider.get();
     }
 
+    public boolean isProxyRestricted(UUID uuid) {
+        return proxyNodes.containsKey(uuid);
+    }
+
     public CompletableFuture<String> setOfficial(String username, boolean official) {
         String normalized = username == null ? "" : username.trim();
         if (!normalized.matches("[A-Za-z0-9_]{3,16}")) {
